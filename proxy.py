@@ -1,16 +1,21 @@
-import os
 import json
 import logging
+import os
+import time
+from urllib.parse import urlencode
 
 import aiohttp
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import Response, StreamingResponse
 
+from capture_store import CaptureStore
+
 
 logger = logging.getLogger("cc_proxy")
 
 app = FastAPI()
+store = CaptureStore()
 
 def get_required_env(name: str) -> str:
     value = os.environ.get(name, "").strip()
@@ -46,6 +51,8 @@ async def healthz():
 )
 async def proxy(path: str, request: Request):
     upstream_url = f"{UPSTREAM_BASE}/{path}"
+    query_string = urlencode(list(request.query_params.multi_items()))
+    request_url = upstream_url if not query_string else f"{upstream_url}?{query_string}"
 
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -54,6 +61,8 @@ async def proxy(path: str, request: Request):
         headers["authorization"] = f"Bearer {API_KEY}"
 
     body = await request.body()
+    capture_id = store.create_capture(request_url=request_url, request_headers=headers, request_body=body)
+    started_monotonic = time.perf_counter()
     wants_stream = False
     if body:
         try:
@@ -66,13 +75,18 @@ async def proxy(path: str, request: Request):
     if wants_stream:
         timeout_cfg = aiohttp.ClientTimeout(total=None, connect=30, sock_connect=30, sock_read=None)
         session = aiohttp.ClientSession(timeout=timeout_cfg, trust_env=True)
-        upstream_resp = await session.request(
-            method=request.method,
-            url=upstream_url,
-            headers=headers,
-            data=body,
-            params=request.query_params,
-        )
+        try:
+            upstream_resp = await session.request(
+                method=request.method,
+                url=upstream_url,
+                headers=headers,
+                data=body,
+                params=request.query_params,
+            )
+        except Exception:
+            await session.close()
+            store.finalize_capture(capture_id, started_monotonic)
+            raise
 
         resp_headers = dict(upstream_resp.headers)
         for key in ("content-length", "content-encoding", "transfer-encoding", "connection"):
@@ -84,10 +98,12 @@ async def proxy(path: str, request: Request):
             try:
                 async for chunk in upstream_resp.content.iter_any():
                     if chunk:
+                        store.append_response_chunk(capture_id, chunk)
                         yield chunk
             finally:
                 upstream_resp.close()
                 await session.close()
+                store.finalize_capture(capture_id, started_monotonic)
 
         return StreamingResponse(
             sse_iterator(),
@@ -104,7 +120,11 @@ async def proxy(path: str, request: Request):
             content=body,
             params=request.query_params,
         )
-        upstream_resp = await client.send(upstream_req, stream=True)
+        try:
+            upstream_resp = await client.send(upstream_req, stream=True)
+        except Exception:
+            store.finalize_capture(capture_id, started_monotonic)
+            raise
 
         resp_headers = dict(upstream_resp.headers)
         for key in ("content-length", "content-encoding", "transfer-encoding", "connection"):
@@ -113,7 +133,9 @@ async def proxy(path: str, request: Request):
         content_type = upstream_resp.headers.get("content-type", "")
         if "application/json" in content_type and "text/event-stream" not in content_type:
             data = await upstream_resp.aread()
+            store.append_response_chunk(capture_id, data)
             await upstream_resp.aclose()
+            store.finalize_capture(capture_id, started_monotonic)
             return Response(
                 content=data,
                 status_code=upstream_resp.status_code,
@@ -143,13 +165,20 @@ async def proxy(path: str, request: Request):
                 return
             finally:
                 await upstream_resp.aclose()
+                store.finalize_capture(capture_id, started_monotonic)
 
         if is_event_stream:
             resp_headers["cache-control"] = "no-cache"
             resp_headers["x-accel-buffering"] = "no"
 
+        async def logging_iterator():
+            async for chunk in iterator():
+                if chunk:
+                    store.append_response_chunk(capture_id, chunk)
+                yield chunk
+
         return StreamingResponse(
-            iterator(),
+            logging_iterator(),
             status_code=upstream_resp.status_code,
             headers=resp_headers,
             media_type="text/event-stream" if is_event_stream else upstream_resp.headers.get("content-type"),
