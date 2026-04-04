@@ -381,6 +381,48 @@ def dashboard_html() -> str:
       background: #201a17;
       color: #fef3c7;
     }}
+    .tools-accordion {{
+      display: grid;
+      gap: 12px;
+    }}
+    .tool-item {{
+      border: 1px solid #e5ded2;
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden;
+    }}
+    .tool-summary {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      list-style: none;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: #7c2d12;
+      font-size: 13px;
+      user-select: none;
+    }}
+    .tool-summary::-webkit-details-marker {{
+      display: none;
+    }}
+    .tool-summary::before {{
+      content: "▸";
+      color: #b45309;
+      font-size: 12px;
+      line-height: 1;
+      transition: transform 0.18s ease;
+    }}
+    .tool-item[open] .tool-summary::before {{
+      transform: rotate(90deg);
+    }}
+    .tool-item[open] .tool-summary {{
+      border-bottom: 1px solid #f1ebe2;
+      background: #f8f5ef;
+    }}
+    .tool-body {{
+      padding: 14px;
+    }}
     .markdown-body {{
       color: #1f2937;
       line-height: 1.65;
@@ -986,7 +1028,7 @@ def dashboard_html() -> str:
         return '<p class="muted">没有可展示的 tools</p>';
       }}
 
-      const rows = tools.map((tool, index) => {{
+      const items = tools.map((tool, index) => {{
         const name = escapeHtml(tool.name || `tool_${{index}}`);
         const inputSchema = tool.input_schema === undefined ? null : tool.input_schema;
         const parts = [
@@ -998,16 +1040,16 @@ def dashboard_html() -> str:
           );
         }}
         return `
-          <div class="messages-cell messages-role">${{name}}</div>
-          <div class="messages-cell">${{parts.join("")}}</div>
+          <details class="tool-item">
+            <summary class="tool-summary">${{name}}</summary>
+            <div class="tool-body">${{parts.join("")}}</div>
+          </details>
         `;
       }}).join("");
 
       return `
-        <div class="messages-grid">
-          <div class="messages-head-cell">name</div>
-          <div class="messages-head-cell">content</div>
-          ${{rows}}
+        <div class="tools-accordion">
+          ${{items}}
         </div>
       `;
     }}
