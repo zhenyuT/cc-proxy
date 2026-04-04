@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -63,6 +64,15 @@ async def proxy(path: str, request: Request):
     body = await request.body()
     capture_id = store.create_capture(request_url=request_url, request_headers=headers, request_body=body)
     started_monotonic = time.perf_counter()
+    capture_finalized = False
+
+    def finalize_capture_once() -> None:
+        nonlocal capture_finalized
+        if capture_finalized:
+            return
+        capture_finalized = True
+        store.finalize_capture(capture_id, started_monotonic)
+
     wants_stream = False
     if body:
         try:
@@ -85,7 +95,7 @@ async def proxy(path: str, request: Request):
             )
         except Exception:
             await session.close()
-            store.finalize_capture(capture_id, started_monotonic)
+            finalize_capture_once()
             raise
 
         resp_headers = dict(upstream_resp.headers)
@@ -100,10 +110,12 @@ async def proxy(path: str, request: Request):
                     if chunk:
                         store.append_response_chunk(capture_id, chunk)
                         yield chunk
+            except asyncio.CancelledError:
+                raise
             finally:
                 upstream_resp.close()
                 await session.close()
-                store.finalize_capture(capture_id, started_monotonic)
+                finalize_capture_once()
 
         return StreamingResponse(
             sse_iterator(),
@@ -123,7 +135,7 @@ async def proxy(path: str, request: Request):
         try:
             upstream_resp = await client.send(upstream_req, stream=True)
         except Exception:
-            store.finalize_capture(capture_id, started_monotonic)
+            finalize_capture_once()
             raise
 
         resp_headers = dict(upstream_resp.headers)
@@ -135,7 +147,7 @@ async def proxy(path: str, request: Request):
             data = await upstream_resp.aread()
             store.append_response_chunk(capture_id, data)
             await upstream_resp.aclose()
-            store.finalize_capture(capture_id, started_monotonic)
+            finalize_capture_once()
             return Response(
                 content=data,
                 status_code=upstream_resp.status_code,
@@ -165,17 +177,21 @@ async def proxy(path: str, request: Request):
                 return
             finally:
                 await upstream_resp.aclose()
-                store.finalize_capture(capture_id, started_monotonic)
 
         if is_event_stream:
             resp_headers["cache-control"] = "no-cache"
             resp_headers["x-accel-buffering"] = "no"
 
         async def logging_iterator():
-            async for chunk in iterator():
-                if chunk:
-                    store.append_response_chunk(capture_id, chunk)
-                yield chunk
+            try:
+                async for chunk in iterator():
+                    if chunk:
+                        store.append_response_chunk(capture_id, chunk)
+                    yield chunk
+            except asyncio.CancelledError:
+                raise
+            finally:
+                finalize_capture_once()
 
         return StreamingResponse(
             logging_iterator(),

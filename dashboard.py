@@ -48,6 +48,7 @@ def dashboard_html() -> str:
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>cc-proxy 抓包查看</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/10.4.1/jsoneditor.min.css" rel="stylesheet" />
   <style>
     :root {{
       --bg: #f4efe7;
@@ -215,10 +216,288 @@ def dashboard_html() -> str:
     details > div {{
       padding: 0 16px 16px;
     }}
+    .json-editor-host {{
+      border: 1px solid #e5ded2;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff;
+      min-height: 260px;
+    }}
+    .json-editor-host .jsoneditor {{
+      border: 0;
+    }}
+    .json-editor-host .jsoneditor-menu {{
+      display: none;
+    }}
+    .json-editor-host .jsoneditor-navigation-bar {{
+      background: #f8f5ef;
+      border-bottom: 1px solid #e5ded2;
+    }}
+    .json-editor-host .jsoneditor-tree {{
+      min-height: 220px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }}
+    .json-editor-host .jsoneditor-statusbar {{
+      display: none;
+    }}
+    .sse-view {{
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }}
+    .sse-event {{
+      border: 1px solid #e5ded2;
+      border-radius: 16px;
+      background: #fff;
+      overflow: hidden;
+    }}
+    .sse-head {{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #efe7dc;
+      background: #faf7f2;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }}
+    .sse-label {{
+      color: #6b7280;
+    }}
+    .sse-value {{
+      color: #111827;
+      word-break: break-all;
+    }}
+    .sse-body {{
+      padding: 12px;
+    }}
+    .fullscreen-modal {{
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.7);
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1000;
+    }}
+    .fullscreen-modal.open {{
+      display: flex;
+    }}
+    .fullscreen-panel {{
+      width: min(1400px, 100%);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }}
+    .fullscreen-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }}
+    .fullscreen-body {{
+      padding: 18px;
+      overflow: auto;
+      flex: 1;
+    }}
+    .messages-modal {{
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.7);
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1001;
+    }}
+    .messages-modal.open {{
+      display: flex;
+    }}
+    .messages-panel {{
+      width: min(1500px, 100%);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }}
+    .messages-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }}
+    .messages-body {{
+      padding: 18px;
+      overflow: auto;
+      flex: 1;
+    }}
+    .messages-grid {{
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      border: 1px solid #e5ded2;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+    }}
+    .messages-head-cell {{
+      padding: 12px 14px;
+      font-weight: 700;
+      background: #f8f5ef;
+      border-bottom: 1px solid #e5ded2;
+    }}
+    .messages-cell {{
+      padding: 14px;
+      border-bottom: 1px solid #f1ebe2;
+    }}
+    .messages-role {{
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: #7c2d12;
+      font-size: 13px;
+      white-space: nowrap;
+    }}
+    .message-content-item {{
+      margin-bottom: 12px;
+    }}
+    .message-content-item:last-child {{
+      margin-bottom: 0;
+    }}
+    .message-content-item pre {{
+      margin: 0;
+      max-height: none;
+      background: #201a17;
+      color: #fef3c7;
+    }}
+    .markdown-body {{
+      color: #1f2937;
+      line-height: 1.65;
+      word-break: break-word;
+    }}
+    .markdown-body :first-child {{
+      margin-top: 0;
+    }}
+    .markdown-body :last-child {{
+      margin-bottom: 0;
+    }}
+    .markdown-body pre {{
+      margin: 10px 0;
+    }}
+    .markdown-body code {{
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }}
+    .markdown-body blockquote {{
+      margin: 10px 0;
+      padding-left: 12px;
+      border-left: 3px solid #d6c7b3;
+      color: #6b7280;
+    }}
+    .md-preview-layout {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      min-height: 520px;
+    }}
+    .md-editor-pane, .md-preview-pane {{
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }}
+    .md-pane-title {{
+      font-weight: 700;
+      margin-bottom: 10px;
+    }}
+    .md-input {{
+      width: 100%;
+      flex: 1;
+      min-height: 460px;
+      resize: vertical;
+      border: 1px solid #d9cfbf;
+      border-radius: 16px;
+      padding: 14px;
+      font: 13px/1.6 "SFMono-Regular", Consolas, monospace;
+      background: #fff;
+      color: #1f2937;
+      outline: none;
+    }}
+    .md-preview-surface {{
+      flex: 1;
+      min-height: 460px;
+      border: 1px solid #d9cfbf;
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+      overflow: auto;
+    }}
+    .json-inline-view {{
+      border: 1px solid #e5ded2;
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px 12px;
+      font: 13px/1.6 "SFMono-Regular", Consolas, monospace;
+      color: #1f2937;
+      overflow: auto;
+    }}
+    .json-inline-line {{
+      white-space: pre-wrap;
+      word-break: break-word;
+    }}
+    .json-inline-child {{
+      margin-left: 18px;
+    }}
+    .json-inline-key {{
+      color: #7c2d12;
+    }}
+    .json-inline-string {{
+      color: #166534;
+    }}
+    .json-inline-number {{
+      color: #b45309;
+    }}
+    .json-inline-boolean {{
+      color: #7c3aed;
+    }}
+    .json-inline-null {{
+      color: #6b7280;
+    }}
+    .json-hover-field {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }}
+    .json-hover-field .js-open-md-preview {{
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .12s ease;
+      padding: 2px 8px;
+      font-size: 12px;
+    }}
+    .json-hover-field:hover .js-open-md-preview {{
+      opacity: 1;
+      pointer-events: auto;
+    }}
     @media (max-width: 980px) {{
       .grid {{ grid-template-columns: 1fr; }}
       .card {{ min-height: auto; }}
       #record-list, #detail {{ max-height: none; }}
+      .fullscreen-modal {{ padding: 12px; }}
+      .messages-modal {{ padding: 12px; }}
+      .messages-grid {{ grid-template-columns: 1fr; }}
+      .md-preview-layout {{ grid-template-columns: 1fr; }}
+      .md-input, .md-preview-surface {{ min-height: 280px; }}
     }}
   </style>
 </head>
@@ -246,8 +525,66 @@ def dashboard_html() -> str:
       </section>
     </div>
   </div>
+  <div id="fullscreen-modal" class="fullscreen-modal">
+    <div class="fullscreen-panel">
+      <div class="fullscreen-header">
+        <strong id="fullscreen-title">全屏查看</strong>
+        <button id="fullscreen-close" class="ghost">关闭</button>
+      </div>
+      <div id="fullscreen-body" class="fullscreen-body"></div>
+    </div>
+  </div>
+  <div id="messages-modal" class="messages-modal">
+    <div class="messages-panel">
+      <div class="messages-header">
+        <strong>messages 便捷查看</strong>
+        <button id="messages-close" class="ghost">关闭</button>
+      </div>
+      <div id="messages-body" class="messages-body"></div>
+    </div>
+  </div>
+  <div id="tools-modal" class="messages-modal">
+    <div class="messages-panel">
+      <div class="messages-header">
+        <strong>tools 便捷查看</strong>
+        <button id="tools-close" class="ghost">关闭</button>
+      </div>
+      <div id="tools-body" class="messages-body"></div>
+    </div>
+  </div>
+  <div id="system-modal" class="messages-modal">
+    <div class="messages-panel">
+      <div class="messages-header">
+        <strong>system 便捷查看</strong>
+        <button id="system-close" class="ghost">关闭</button>
+      </div>
+      <div id="system-body" class="messages-body"></div>
+    </div>
+  </div>
+  <div id="md-preview-modal" class="messages-modal">
+    <div class="messages-panel">
+      <div class="messages-header">
+        <strong>Markdown 渲染</strong>
+        <button id="md-preview-close" class="ghost">关闭</button>
+      </div>
+      <div class="messages-body">
+        <div class="md-preview-layout">
+          <div class="md-editor-pane">
+            <div class="md-pane-title">输入内容</div>
+            <textarea id="md-preview-input" class="md-input"></textarea>
+          </div>
+          <div class="md-preview-pane">
+            <div class="md-pane-title">渲染结果</div>
+            <div id="md-preview-output" class="md-preview-surface markdown-body"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/10.4.1/jsoneditor.min.js"></script>
   <script>
-    const state = {{ activeId: null }};
+    const state = {{ activeId: null, bodyEditors: [], fullscreenEditor: null }};
 
     function escapeHtml(value) {{
       return String(value)
@@ -294,18 +631,171 @@ def dashboard_html() -> str:
       }});
     }}
 
-    function formatBodyContent(body) {{
-      if (!body.content) {{
-        return "(empty)";
-      }}
-      if (body.content_type === "base64") {{
-        return body.content;
+    function parseJsonContent(body) {{
+      if (!body.content || body.content_type === "base64") {{
+        return null;
       }}
       try {{
-        return JSON.stringify(JSON.parse(body.content), null, 2);
+        return JSON.parse(body.content);
       }} catch (_error) {{
-        return body.content;
+        return null;
       }}
+    }}
+
+    function getMessagesArray(body) {{
+      const jsonValue = parseJsonContent(body);
+      if (!jsonValue || !Array.isArray(jsonValue.messages)) {{
+        return null;
+      }}
+      return jsonValue.messages;
+    }}
+
+    function getToolsArray(body) {{
+      const jsonValue = parseJsonContent(body);
+      if (!jsonValue || !Array.isArray(jsonValue.tools)) {{
+        return null;
+      }}
+      return jsonValue.tools;
+    }}
+
+    function getSystemArray(body) {{
+      const jsonValue = parseJsonContent(body);
+      if (!jsonValue || !Array.isArray(jsonValue.system)) {{
+        return null;
+      }}
+      return jsonValue.system;
+    }}
+
+    function renderMarkdown(text) {{
+      if (!text) {{
+        return '<p class="muted">(empty)</p>';
+      }}
+      if (window.marked && typeof window.marked.parse === "function") {{
+        return window.marked.parse(text);
+      }}
+      return `<pre>${{escapeHtml(text)}}</pre>`;
+    }}
+
+    function extractMarkdownSource(value) {{
+      if (typeof value === "string") {{
+        return value;
+      }}
+      if (value && typeof value.text === "string") {{
+        return value.text;
+      }}
+      return JSON.stringify(value, null, 2);
+    }}
+
+    function shouldShowMarkdownField(key, value) {{
+      return typeof value === "string" && ["description", "text", "content", "thinking"].includes(String(key));
+    }}
+
+    function renderInlineJsonValue(value, key = null) {{
+      if (value === null) {{
+        return '<span class="json-inline-null">null</span>';
+      }}
+      if (typeof value === "string") {{
+        const stringHtml = `<span class="json-inline-string">"${{escapeHtml(value)}}"</span>`;
+        if (shouldShowMarkdownField(key, value)) {{
+          return `
+            <span class="json-hover-field">
+              ${{stringHtml}}
+              <button class="ghost js-open-md-preview" data-md="${{encodeURIComponent(value)}}">md渲染</button>
+            </span>
+          `;
+        }}
+        return stringHtml;
+      }}
+      if (typeof value === "number") {{
+        return `<span class="json-inline-number">${{escapeHtml(String(value))}}</span>`;
+      }}
+      if (typeof value === "boolean") {{
+        return `<span class="json-inline-boolean">${{escapeHtml(String(value))}}</span>`;
+      }}
+      return `<span>${{escapeHtml(String(value))}}</span>`;
+    }}
+
+    function renderInlineJsonNode(value, key = null) {{
+      const keyHtml = key === null ? "" : `<span class="json-inline-key">"${{escapeHtml(String(key))}}"</span>: `;
+      if (value === null || typeof value !== "object") {{
+        return `<div class="json-inline-line">${{keyHtml}}${{renderInlineJsonValue(value, key)}}</div>`;
+      }}
+
+      if (Array.isArray(value)) {{
+        const items = value.map((item) => `
+          <div class="json-inline-child">${{renderInlineJsonNode(item)}}</div>
+        `).join("");
+        return `
+          <div class="json-inline-line">${{keyHtml}}[</div>
+          ${{items}}
+          <div class="json-inline-line">]</div>
+        `;
+      }}
+
+      const entries = Object.entries(value).map(([childKey, childValue]) => `
+        <div class="json-inline-child">${{renderInlineJsonNode(childValue, childKey)}}</div>
+      `).join("");
+      return `
+        <div class="json-inline-line">${{keyHtml}}{{</div>
+        ${{entries}}
+        <div class="json-inline-line">}}</div>
+      `;
+    }}
+
+    function renderInlineJsonBlock(value) {{
+      return `<div class="json-inline-view">${{renderInlineJsonNode(value)}}</div>`;
+    }}
+
+    function parseSseBody(body) {{
+      if (!body.content || body.content_type === "base64") {{
+        return null;
+      }}
+      const text = body.content;
+      if (!text.includes("\\ndata:") && !text.startsWith("data:") && !text.includes("\\nevent:") && !text.startsWith("event:")) {{
+        return null;
+      }}
+
+      const blocks = text.trim().split(/\\n\\s*\\n/).filter(Boolean);
+      const events = blocks.map((block, index) => {{
+        const lines = block.split("\\n");
+        let eventName = "message";
+        const dataLines = [];
+        const rawLines = [];
+        for (const line of lines) {{
+          rawLines.push(line);
+          if (line.startsWith("event:")) {{
+            eventName = line.slice(6).trim() || "message";
+          }} else if (line.startsWith("data:")) {{
+            dataLines.push(line.slice(5).trimStart());
+          }}
+        }}
+        const dataText = dataLines.join("\\n");
+        let dataJson = null;
+        if (dataText) {{
+          try {{
+            dataJson = JSON.parse(dataText);
+          }} catch (_error) {{
+            dataJson = null;
+          }}
+        }}
+        return {{
+          id: index,
+          event: eventName,
+          dataText,
+          dataJson,
+          raw: rawLines.join("\\n"),
+        }};
+      }});
+
+      return events.length ? events : null;
+    }}
+
+    function formatBodyContent(body) {{
+      const jsonValue = parseJsonContent(body);
+      if (jsonValue !== null) {{
+        return JSON.stringify(jsonValue, null, 2);
+      }}
+      return body.content || "(empty)";
     }}
 
     function legacyCopyText(text) {{
@@ -333,28 +823,289 @@ def dashboard_html() -> str:
       legacyCopyText(text);
     }}
 
+    function renderBodyView(body) {{
+      const sseEvents = parseSseBody(body);
+      if (sseEvents) {{
+        return `
+          <div class="sse-view">
+            ${{sseEvents.map((event) => `
+              <div class="sse-event">
+                <div class="sse-head">
+                  <span class="sse-label">event</span>
+                  <span class="sse-value">${{escapeHtml(event.event)}}</span>
+                </div>
+                <div class="sse-body">
+                  ${{event.dataJson !== null
+                    ? `<div class="json-editor-host js-json-editor" data-inline-json="${{encodeURIComponent(JSON.stringify(event.dataJson))}}"></div>`
+                    : `<pre>${{escapeHtml(event.dataText || event.raw || "(empty)")}}</pre>`}}
+                </div>
+              </div>
+            `).join("")}}
+          </div>
+        `;
+      }}
+
+      const jsonValue = parseJsonContent(body);
+      if (jsonValue !== null) {{
+        return '<div class="json-editor-host js-json-editor"></div>';
+      }}
+      return `<pre>${{escapeHtml(formatBodyContent(body))}}</pre>`;
+    }}
+
+    function destroyEditors() {{
+      state.bodyEditors.forEach((editor) => editor.destroy());
+      state.bodyEditors = [];
+    }}
+
+    function destroyFullscreenEditor() {{
+      if (state.fullscreenEditor) {{
+        state.fullscreenEditor.destroy();
+        state.fullscreenEditor = null;
+      }}
+    }}
+
+    function createReadonlyJsonEditor(container, value, expandAllNodes = false) {{
+      const editor = new JSONEditor(container, {{
+        mode: "view",
+        modes: ["view"],
+        mainMenuBar: false,
+        navigationBar: true,
+        statusBar: false
+      }});
+      editor.set(value);
+      if (expandAllNodes && typeof editor.expandAll === "function") {{
+        editor.expandAll();
+      }}
+      return editor;
+    }}
+
+    function mountDetailJsonEditors(detail) {{
+      destroyEditors();
+      const jsonContainers = document.querySelectorAll(".js-json-editor");
+      jsonContainers.forEach((container) => {{
+        const inlineJson = container.dataset.inlineJson;
+        if (inlineJson) {{
+          try {{
+            const inlineValue = JSON.parse(decodeURIComponent(inlineJson));
+            state.bodyEditors.push(createReadonlyJsonEditor(container, inlineValue, true));
+          }} catch (_error) {{
+          }}
+          return;
+        }}
+        const kind = container.dataset.kind;
+        const body = kind === "request" ? detail.request_body : detail.response_body;
+        const jsonValue = parseJsonContent(body);
+        if (jsonValue !== null) {{
+          state.bodyEditors.push(createReadonlyJsonEditor(container, jsonValue, kind === "response"));
+        }}
+      }});
+    }}
+
+    function openFullscreen(title, body) {{
+      const modal = document.getElementById("fullscreen-modal");
+      document.getElementById("fullscreen-title").textContent = title;
+      document.getElementById("fullscreen-body").innerHTML = renderBodyView(body);
+      destroyFullscreenEditor();
+      const containers = document.querySelectorAll("#fullscreen-body .js-json-editor");
+      const sseEvents = parseSseBody(body);
+      if (sseEvents) {{
+        const editors = [];
+        containers.forEach((container) => {{
+          const inlineJson = container.dataset.inlineJson;
+          if (!inlineJson) {{
+            return;
+          }}
+          try {{
+            const inlineValue = JSON.parse(decodeURIComponent(inlineJson));
+            editors.push(createReadonlyJsonEditor(container, inlineValue, true));
+          }} catch (_error) {{
+          }}
+        }});
+        state.fullscreenEditor = {{
+          destroy() {{
+            editors.forEach((editor) => editor.destroy());
+          }}
+        }};
+      }} else {{
+        const container = document.querySelector("#fullscreen-body .js-json-editor");
+        const jsonValue = parseJsonContent(body);
+        if (container && jsonValue !== null) {{
+          state.fullscreenEditor = createReadonlyJsonEditor(container, jsonValue, true);
+        }}
+      }}
+      modal.classList.add("open");
+    }}
+
+    function closeFullscreen() {{
+      document.getElementById("fullscreen-modal").classList.remove("open");
+      document.getElementById("fullscreen-body").innerHTML = "";
+      destroyFullscreenEditor();
+    }}
+
+    function renderMessagesModal(messages) {{
+      if (!messages || !messages.length) {{
+        return '<p class="muted">没有可展示的 messages</p>';
+      }}
+
+      const rows = messages.map((message) => {{
+        const role = escapeHtml(message.role || "-");
+        const contentItems = Array.isArray(message.content) ? message.content : [message.content];
+        const contentHtml = contentItems.map((item) => `
+          <div class="message-content-item">
+            ${{renderInlineJsonBlock(item)}}
+          </div>
+        `).join("");
+        return `
+          <div class="messages-cell messages-role">${{role}}</div>
+          <div class="messages-cell">${{contentHtml || '<pre>(empty)</pre>'}}</div>
+        `;
+      }}).join("");
+
+      return `
+        <div class="messages-grid">
+          <div class="messages-head-cell">role</div>
+          <div class="messages-head-cell">content</div>
+          ${{rows}}
+        </div>
+      `;
+    }}
+
+    function openMessagesModal(messages) {{
+      document.getElementById("messages-body").innerHTML = renderMessagesModal(messages);
+      document.getElementById("messages-modal").classList.add("open");
+      bindMarkdownPreviewButtons("#messages-body");
+    }}
+
+    function closeMessagesModal() {{
+      document.getElementById("messages-modal").classList.remove("open");
+      document.getElementById("messages-body").innerHTML = "";
+    }}
+
+    function renderToolsModal(tools) {{
+      if (!tools || !tools.length) {{
+        return '<p class="muted">没有可展示的 tools</p>';
+      }}
+
+      const rows = tools.map((tool, index) => {{
+        const name = escapeHtml(tool.name || `tool_${{index}}`);
+        const inputSchema = tool.input_schema === undefined ? null : tool.input_schema;
+        const parts = [
+          `<div class="message-content-item">${{renderInlineJsonBlock(tool)}}</div>`
+        ];
+        if (inputSchema !== null) {{
+          parts.unshift(
+            `<div class="message-content-item">${{renderInlineJsonBlock(inputSchema)}}</div>`
+          );
+        }}
+        return `
+          <div class="messages-cell messages-role">${{name}}</div>
+          <div class="messages-cell">${{parts.join("")}}</div>
+        `;
+      }}).join("");
+
+      return `
+        <div class="messages-grid">
+          <div class="messages-head-cell">name</div>
+          <div class="messages-head-cell">content</div>
+          ${{rows}}
+        </div>
+      `;
+    }}
+
+    function openToolsModal(tools) {{
+      document.getElementById("tools-body").innerHTML = renderToolsModal(tools);
+      document.getElementById("tools-modal").classList.add("open");
+      bindMarkdownPreviewButtons("#tools-body");
+    }}
+
+    function closeToolsModal() {{
+      document.getElementById("tools-modal").classList.remove("open");
+      document.getElementById("tools-body").innerHTML = "";
+    }}
+
+    function renderSystemModal(systemItems) {{
+      if (!systemItems || !systemItems.length) {{
+        return '<p class="muted">没有可展示的 system</p>';
+      }}
+
+      const rows = systemItems.map((item) => {{
+        const type = escapeHtml(item.type || "-");
+        const markdown = renderMarkdown(item.text || "");
+        return `
+          <div class="messages-cell messages-role">${{type}}</div>
+          <div class="messages-cell"><div class="markdown-body">${{markdown}}</div></div>
+        `;
+      }}).join("");
+
+      return `
+        <div class="messages-grid">
+          <div class="messages-head-cell">type</div>
+          <div class="messages-head-cell">text</div>
+          ${{rows}}
+        </div>
+      `;
+    }}
+
+    function openSystemModal(systemItems) {{
+      document.getElementById("system-body").innerHTML = renderSystemModal(systemItems);
+      document.getElementById("system-modal").classList.add("open");
+    }}
+
+    function closeSystemModal() {{
+      document.getElementById("system-modal").classList.remove("open");
+      document.getElementById("system-body").innerHTML = "";
+    }}
+
+    function updateMarkdownPreview() {{
+      const input = document.getElementById("md-preview-input");
+      document.getElementById("md-preview-output").innerHTML = renderMarkdown(input.value);
+    }}
+
+    function openMarkdownPreview(initialText) {{
+      const modal = document.getElementById("md-preview-modal");
+      const input = document.getElementById("md-preview-input");
+      input.value = initialText || "";
+      updateMarkdownPreview();
+      modal.classList.add("open");
+      input.focus();
+    }}
+
+    function closeMarkdownPreview() {{
+      document.getElementById("md-preview-modal").classList.remove("open");
+    }}
+
+    function bindMarkdownPreviewButtons(rootSelector) {{
+      document.querySelectorAll(rootSelector + " .js-open-md-preview").forEach((button) => {{
+        button.addEventListener("click", () => {{
+          openMarkdownPreview(decodeURIComponent(button.dataset.md || ""));
+        }});
+      }});
+    }}
+
     function bodyBlock(kind, body) {{
       const label = kind === "request" ? "请求体" : "响应体";
       const downloadUrl = `/api/records/${{state.activeId}}/body/${{kind}}/download`;
-      const copy = body.content_type === "base64"
-        ? "二进制内容，以下为 base64 预览。"
-        : "文本预览。";
-      const prettyContent = formatBodyContent(body);
       const encodedContent = encodeURIComponent(body.content || "");
+      const canFullscreen = kind === "request";
+      const hasMessages = kind === "request" && !!getMessagesArray(body);
+      const hasTools = kind === "request" && !!getToolsArray(body);
+      const hasSystem = kind === "request" && !!getSystemArray(body);
       return `
         <div class="section">
           <h3>${{label}}</h3>
           <div class="body-actions">
             <span class="pill">大小 ${{body.total_bytes_display}}</span>
-            <span class="pill">${{escapeHtml(copy)}}</span>
             ${{body.truncated ? '<span class="pill">预览已截断</span>' : ''}}
             <a href="${{downloadUrl}}"><button class="ghost">下载完整内容</button></a>
           </div>
           <div class="body-toolbar">
             <button class="ghost js-copy-body" data-copy="${{encodedContent}}">复制内容</button>
-            ${{body.content_type !== "base64" ? '<span class="pill">JSON 自动美化</span>' : ''}}
+            ${{canFullscreen ? `<button class="ghost js-fullscreen-body" data-kind="${{kind}}">全屏查看</button>` : ''}}
+            ${{hasMessages ? `<button class="ghost js-view-messages" data-kind="${{kind}}">查看 messages</button>` : ''}}
+            ${{hasTools ? `<button class="ghost js-view-tools" data-kind="${{kind}}">查看 tools</button>` : ''}}
+            ${{hasSystem ? `<button class="ghost js-view-system" data-kind="${{kind}}">查看 system</button>` : ''}}
           </div>
-          <pre>${{escapeHtml(prettyContent)}}</pre>
+          <div data-kind="${{kind}}" class="js-json-container">${{renderBodyView(body)}}</div>
         </div>
       `;
     }}
@@ -399,6 +1150,13 @@ def dashboard_html() -> str:
         ${{bodyBlock("request", detail.request_body)}}
         ${{bodyBlock("response", detail.response_body)}}
       `;
+      document.querySelectorAll(".js-json-container .js-json-editor").forEach((node) => {{
+        const parent = node.closest(".js-json-container");
+        if (parent) {{
+          node.dataset.kind = parent.dataset.kind;
+        }}
+      }});
+      mountDetailJsonEditors(detail);
 
       document.querySelectorAll(".js-copy-body").forEach((button) => {{
         button.addEventListener("click", async () => {{
@@ -416,9 +1174,81 @@ def dashboard_html() -> str:
           }}
         }});
       }});
+
+      document.querySelectorAll(".js-fullscreen-body").forEach((button) => {{
+        button.addEventListener("click", () => {{
+          const kind = button.dataset.kind;
+          const body = kind === "request" ? detail.request_body : detail.response_body;
+          openFullscreen(kind === "request" ? "请求体全屏查看" : "响应体全屏查看", body);
+        }});
+      }});
+
+      document.querySelectorAll(".js-view-messages").forEach((button) => {{
+        button.addEventListener("click", () => {{
+          const kind = button.dataset.kind;
+          const body = kind === "request" ? detail.request_body : detail.response_body;
+          openMessagesModal(getMessagesArray(body));
+        }});
+      }});
+
+      document.querySelectorAll(".js-view-tools").forEach((button) => {{
+        button.addEventListener("click", () => {{
+          const kind = button.dataset.kind;
+          const body = kind === "request" ? detail.request_body : detail.response_body;
+          openToolsModal(getToolsArray(body));
+        }});
+      }});
+
+      document.querySelectorAll(".js-view-system").forEach((button) => {{
+        button.addEventListener("click", () => {{
+          const kind = button.dataset.kind;
+          const body = kind === "request" ? detail.request_body : detail.response_body;
+          openSystemModal(getSystemArray(body));
+        }});
+      }});
     }}
 
     document.getElementById("refresh-btn").addEventListener("click", loadList);
+    document.getElementById("fullscreen-close").addEventListener("click", closeFullscreen);
+    document.getElementById("fullscreen-modal").addEventListener("click", (event) => {{
+      if (event.target.id === "fullscreen-modal") {{
+        closeFullscreen();
+      }}
+    }});
+    document.addEventListener("keydown", (event) => {{
+      if (event.key === "Escape") {{
+        closeFullscreen();
+        closeMessagesModal();
+        closeToolsModal();
+        closeSystemModal();
+        closeMarkdownPreview();
+      }}
+    }});
+    document.getElementById("messages-close").addEventListener("click", closeMessagesModal);
+    document.getElementById("messages-modal").addEventListener("click", (event) => {{
+      if (event.target.id === "messages-modal") {{
+        closeMessagesModal();
+      }}
+    }});
+    document.getElementById("tools-close").addEventListener("click", closeToolsModal);
+    document.getElementById("tools-modal").addEventListener("click", (event) => {{
+      if (event.target.id === "tools-modal") {{
+        closeToolsModal();
+      }}
+    }});
+    document.getElementById("system-close").addEventListener("click", closeSystemModal);
+    document.getElementById("system-modal").addEventListener("click", (event) => {{
+      if (event.target.id === "system-modal") {{
+        closeSystemModal();
+      }}
+    }});
+    document.getElementById("md-preview-close").addEventListener("click", closeMarkdownPreview);
+    document.getElementById("md-preview-modal").addEventListener("click", (event) => {{
+      if (event.target.id === "md-preview-modal") {{
+        closeMarkdownPreview();
+      }}
+    }});
+    document.getElementById("md-preview-input").addEventListener("input", updateMarkdownPreview);
     loadList();
   </script>
 </body>
