@@ -1,0 +1,17 @@
+[Unit]
+Description=cc-proxy FastAPI proxy service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/data/github/cc-proxy
+Environment=PYTHON_BIN=/data/github/cc-proxy/.venv/bin/python
+Environment=UVICORN_RELOAD=0
+ExecStart=/usr/bin/env bash /data/github/cc-proxy/start.sh
+Restart=always
+RestartSec=3
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

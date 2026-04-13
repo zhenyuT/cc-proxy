@@ -61,6 +61,8 @@ OPENAI_API_KEY="your_api_key"
 ./start.sh
 ```
 
+`start.sh` 默认会开启 `uvicorn --reload`，便于本地开发。如果用于常驻运行，例如 `systemd`，请设置 `UVICORN_RELOAD=0` 关闭热重载。
+
 如果你不使用 `start.sh`，也可以手动导出环境变量后分别运行：
 
 ```bash
@@ -213,6 +215,35 @@ http://127.0.0.1:8888/
 
 ```bash
 python -m py_compile proxy.py
+```
+
+## systemd 启动
+
+仓库内提供了一个可直接安装的 unit 文件：
+
+```text
+deploy/systemd/cc-proxy.service
+```
+
+当前模板默认使用以下路径，请按你的实际部署目录修改后再安装：
+
+- 工作目录：`/data/github/cc-proxy`
+- Python：`/data/github/cc-proxy/.venv/bin/python`
+- 启动脚本：`/data/github/cc-proxy/start.sh`
+
+安装示例：
+
+```bash
+sudo cp deploy/systemd/cc-proxy.service /etc/systemd/system/cc-proxy.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now cc-proxy
+```
+
+查看状态和日志：
+
+```bash
+sudo systemctl status cc-proxy
+journalctl -u cc-proxy -f
 ```
 
 ## 注意事项

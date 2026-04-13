@@ -33,6 +33,12 @@ PROXY_PORT="${PROXY_PORT:-9000}"
 DASHBOARD_HOST="${DASHBOARD_HOST:-0.0.0.0}"
 DASHBOARD_PORT="${DASHBOARD_PORT:-8888}"
 PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
+UVICORN_RELOAD="${UVICORN_RELOAD:-1}"
+
+UVICORN_ARGS=()
+if [ "${UVICORN_RELOAD}" = "1" ]; then
+  UVICORN_ARGS+=(--reload)
+fi
 
 cleanup() {
   if [ -n "${PROXY_PID:-}" ]; then
@@ -45,10 +51,10 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-"${PYTHON_BIN}" -m uvicorn proxy:app --host "${PROXY_HOST}" --port "${PROXY_PORT}" --reload &
+"${PYTHON_BIN}" -m uvicorn proxy:app --host "${PROXY_HOST}" --port "${PROXY_PORT}" "${UVICORN_ARGS[@]}" &
 PROXY_PID=$!
 
-"${PYTHON_BIN}" -m uvicorn dashboard:app --host "${DASHBOARD_HOST}" --port "${DASHBOARD_PORT}" --reload &
+"${PYTHON_BIN}" -m uvicorn dashboard:app --host "${DASHBOARD_HOST}" --port "${DASHBOARD_PORT}" "${UVICORN_ARGS[@]}" &
 DASHBOARD_PID=$!
 
 wait -n "${PROXY_PID}" "${DASHBOARD_PID}"
